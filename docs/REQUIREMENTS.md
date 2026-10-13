@@ -4,7 +4,7 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------ |
 | **Project**    | TfL Journey Planner UI test automation (STA Coding Challenge)                                                |
 | **Author**     | Tangi Fominyam                                                                                               |
-| **Version**    | 0.3 (draft)                                                                                                  |
+| **Version**    | 0.4 (draft)                                                                                                  |
 | **Date**       | 12 October 2026                                                                                              |
 | **Test basis** | *STA Coding Challenge - Web* brief (9 Oct 2026); the live Journey Planner; exploratory session (12 Oct 2026) |
 
@@ -28,16 +28,16 @@ an edge case with a clear workaround.
 
 ### 2.1 Functional requirements (what the tests must verify)
 
-| ID     | Requirement                                                            | Priority | Scenario                     |
-| ------ | ---------------------------------------------------------------------- | -------- | ---------------------------- |
-| REQ-08 | Plan Leicester Square to Covent Garden, picking both from autocomplete | High     | Plan a valid journey         |
-| REQ-09 | Results show a walking time and a cycling time                         | High     | Plan a valid journey         |
-| REQ-10 | Edit preferences, choose least walking, update the journey             | Medium   | Least walking                |
-| REQ-11 | The updated journey shows a valid journey time                         | Medium   | Least walking                |
-| REQ-12 | View Details opens the full journey details                            | Medium   | Access information           |
-| REQ-13 | Complete access information is shown for Covent Garden                 | High     | Access information           |
-| REQ-14 | Invalid locations give no journey results                              | Medium   | Invalid journey (3 examples) |
-| REQ-15 | No journey can be planned with both locations empty                    | Low      | No locations                 |
+| ID     | Requirement                                                            | Priority | Scenario in `JourneyPlanner.feature`                               |
+| ------ | ---------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| REQ-08 | Plan Leicester Square to Covent Garden, picking both from autocomplete | High     | A valid journey shows walking and cycling times                    |
+| REQ-09 | Results show a walking time and a cycling time                         | High     | A valid journey shows walking and cycling times                    |
+| REQ-10 | Edit preferences, choose least walking, update the journey             | Medium   | Choosing routes with least walking updates the journey             |
+| REQ-11 | The updated journey shows a valid journey time                         | Medium   | Choosing routes with least walking updates the journey             |
+| REQ-12 | View Details opens the full journey details                            | Medium   | Journey details show complete access information for Covent Garden |
+| REQ-13 | Complete access information is shown for Covent Garden                 | High     | Journey details show complete access information for Covent Garden |
+| REQ-14 | Invalid locations give no journey results                              | Medium   | A journey with an invalid location is not planned (3 examples)     |
+| REQ-15 | No journey can be planned with both locations empty                    | Low      | A journey cannot be planned without locations                      |
 
 **Expected behaviour, confirmed by exploratory testing.** This is what the tests will check.
 
@@ -143,6 +143,7 @@ check for a "no results" message (there isn't one), or for the suggestions thems
 
 | Version | Date        | Change                                                                                                                         |
 | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 0.4     | 12 Oct 2026 | Scenario names now match the feature file exactly                                                                              |
 | 0.3     | 12 Oct 2026 | Updated after exploratory testing: ambiguities resolved, expected behaviour added, test data reasoning corrected, one new risk |
 | 0.2     | 12 Oct 2026 | Added test data (section 2.4)                                                                                                  |
 | 0.1     | 9 Oct 2026  | First draft from the brief, before exploratory testing                                                                         |
