@@ -11,6 +11,9 @@ public sealed class JourneyPlannerSteps
 {
     private static readonly Regex ResultsUrl = new("/plan-a-journey/results");
 
+    // A number followed by "min" or "mins", with or without a space: "6 mins", "1mins".
+    private static readonly Regex MinutesPattern = new(@"\d+\s*mins?\b", RegexOptions.IgnoreCase);
+
     private readonly IPage _page;
     private readonly JourneyPlannerPage _journeyPlanner;
 
@@ -35,9 +38,52 @@ public sealed class JourneyPlannerSteps
     {
         await _journeyPlanner.EnterLocationAsync(_journeyPlanner.FromInput, from);
         await _journeyPlanner.EnterLocationAsync(_journeyPlanner.ToInput, to);
-        await _journeyPlanner.PlanJourneyAsync();
+        await PlanAndWaitForResultsAsync();
+    }
 
-        await _page.WaitForURLAsync(ResultsUrl);
+    [When("I type {string} in the {word} field and choose {string}")]
+    public async Task WhenITypeInTheFieldAndChoose(string typed, string field, string suggestion)
+    {
+        var input = field switch
+        {
+            "From" => _journeyPlanner.FromInput,
+            "To" => _journeyPlanner.ToInput,
+            _ => throw new ArgumentException($"Unknown field '{field}'. Use From or To.")
+        };
+
+        await _journeyPlanner.TypeAndChooseAsync(input, typed, suggestion);
+
+        // Prove the choice took: the field now holds the full place name, not what was typed.
+        await Expect(input).ToHaveValueAsync(new Regex(Regex.Escape(suggestion)));
+    }
+
+    [When("I plan the journey")]
+    public async Task WhenIPlanTheJourney()
+    {
+        await PlanAndWaitForResultsAsync();
+    }
+
+    [Then("journey results are shown from {string} to {string}")]
+    public async Task ThenJourneyResultsAreShownFromTo(string from, string to)
+    {
+        await Expect(_journeyPlanner.ResultsHeading).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.ResultsSummary).ToContainTextAsync(from);
+        await Expect(_journeyPlanner.ResultsSummary).ToContainTextAsync(to);
+    }
+
+    [Then("a walking time is shown in minutes")]
+    public async Task ThenAWalkingTimeIsShownInMinutes()
+    {
+        // Live data, so check the format ("6 mins", "1 mins"), not the value.
+        await Expect(_journeyPlanner.WalkingOption).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.WalkingOption).ToContainTextAsync(MinutesPattern);
+    }
+
+    [Then("a cycling time is shown in minutes")]
+    public async Task ThenACyclingTimeIsShownInMinutes()
+    {
+        await Expect(_journeyPlanner.CyclingOption).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.CyclingOption).ToContainTextAsync(MinutesPattern);
     }
 
     [Then("I see the message {string}")]
@@ -59,5 +105,11 @@ public sealed class JourneyPlannerSteps
         // runs the page has settled and a count of zero means "none", not "not loaded yet".
         await Expect(_journeyPlanner.WalkingOption).ToHaveCountAsync(0);
         await Expect(_journeyPlanner.CyclingOption).ToHaveCountAsync(0);
+    }
+
+    private async Task PlanAndWaitForResultsAsync()
+    {
+        await _journeyPlanner.PlanJourneyAsync();
+        await _page.WaitForURLAsync(ResultsUrl);
     }
 }

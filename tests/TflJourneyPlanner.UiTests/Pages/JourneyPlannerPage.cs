@@ -32,6 +32,10 @@ public sealed class JourneyPlannerPage
 
     public ILocator CyclingOption => _page.GetByRole(AriaRole.Link, new() { Name = "Cycling Route:" });
 
+    // The grey box at the top of the results page: "From: ... To: ... Leaving: ...".
+    // It has no role or label of its own, so this is the one place a CSS class is used.
+    public ILocator ResultsSummary => _page.Locator(".journey-result-summary");
+
     // "We found more than one location matching 'X'". The page can hold one of these per
     // field (both invalid gives two), so always ask for the one about a specific location.
     public ILocator DisambiguationMessage(string location) =>
@@ -69,6 +73,21 @@ public sealed class JourneyPlannerPage
         }
 
         await match.ClickAsync();
+    }
+
+    /// <summary>
+    /// Types part of a place name, waits for the autocomplete and picks the named suggestion.
+    /// This is the path the brief asks for: "using the widget's autocomplete".
+    /// </summary>
+    public async Task TypeAndChooseAsync(ILocator field, string typed, string suggestion)
+    {
+        await field.ClickAsync();
+        await field.FillAsync(string.Empty);
+        await field.PressSequentiallyAsync(typed, new() { Delay = 50 });
+
+        // The list can show the same station more than once (stop and station entries),
+        // so take the first match, as a user would.
+        await Suggestion(suggestion).First.ClickAsync();
     }
 
     public async Task PlanJourneyAsync()
