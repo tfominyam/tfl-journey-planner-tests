@@ -44,8 +44,8 @@ Feature: Plan a journey with the TfL Journey Planner
   @REQ-14
   Scenario Outline: A journey with an invalid location is not planned (<Case>)
     When I plan a journey from "<From>" to "<To>"
-    Then no journey results are shown
-    And I am asked which location I meant by "<Unmatched>"
+    Then I am asked which location I meant by "<Unmatched>"
+    And no journey results are shown
 
     Examples:
       | Case         | From                                 | To                                | Unmatched |

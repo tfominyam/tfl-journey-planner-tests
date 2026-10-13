@@ -88,6 +88,11 @@ What I saw in each case:
 - **Invalid To (Zzqxvt999):** the page says "We found more than one location matching 'Zzqxvt999'" but lists a single blank entry showing only a comma. ToId in the URL is empty.
 - **Both invalid (Abcxyz111 / Qwzzpp222):** the page says "We found more than one location matching 'Abcxyz111'" and lists suggestions such as ABC Pharmacy and Abchurch Lane. It only asks about the From value. FromId and ToId in the URL are both empty.
 
+Found later, while automating REQ-14 (13 Oct 2026):
+
+- In the both-invalid case the page also holds a "more than one location matching 'Qwzzpp222'" message for the To value, but it is hidden. Only the From message is shown. The tests therefore look for the message about one named location, not any message.
+- The both-invalid list ends with a seventh entry that is blank apart from a comma, the same as Issue 2.
+
 ![Invalid From entered](images/08a-invalid-from-entered.png)
 
 ![Result for invalid From](images/08b-invalid-from-result.png)
@@ -132,6 +137,7 @@ Anything that looked wrong, slow, confusing or inaccessible, even if it's outsid
 - **Expected:** a message that matches the list shown, for example "We couldn't find 'Zzqxvt999'".
 - **Actual:** the page says "We found more than one location matching 'Zzqxvt999'", but the list has one entry, and that entry is blank apart from a comma.
 - **Evidence:** 09b-invalid-to-result.png
+- **Also seen:** at the end of the both-invalid list (Abcxyz111 / Qwzzpp222), found during the automated run on 13 Oct 2026.
 
 ### Issue 3: nonsense input is matched to real places
 
