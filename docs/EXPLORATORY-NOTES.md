@@ -122,6 +122,7 @@ Anything that looked wrong, slow, confusing or inaccessible, even if it's outsid
 | 2   | "More than one location" message with a single blank entry              | Medium   | 09b      |
 | 3   | Nonsense input is matched to real places                                | Low      | 08b, 10b |
 | 4   | Cycling time reads "1 mins"                                             | Low      | 04       |
+| 5   | Cookie overlay can stay on screen after accepting cookies               | Medium   | 12       |
 
 ### Issue 1: lift shown in the step icons but missing from the accessibility summary
 
@@ -153,6 +154,19 @@ Anything that looked wrong, slow, confusing or inaccessible, even if it's outsid
 - **Expected:** "1 min".
 - **Actual:** "1 mins".
 - **Evidence:** 04-results-walk-cycle.png
+
+### Issue 5: cookie overlay can stay on screen after accepting cookies
+
+- **Found:** during an automated run of REQ-08/09 on 13 Oct 2026, not during the manual session.
+- **Steps:** open Plan a journey in a fresh browser and click "Accept only essential cookies".
+- **Expected:** the banner and the dark layer behind it both disappear.
+- **Actual:** the banner went (the page shows "My Journeys is disabled due to your cookie preferences"), but the dark layer stayed for more than 15 seconds and blocked every click on the page.
+- **How often:** once in the runs so far. It looks like timing, so it may be hard to reproduce by hand.
+- **Why it matters:** a user would see a dimmed page that ignores clicks until they reload.
+- **How the tests handle it:** if the layer is still there 10 seconds after accepting, the test reloads the page and writes a line to the test output, so it is visible rather than hidden.
+- **Evidence:** 12-cookie-overlay-stuck.png
+
+![Cookie overlay still covering the page after accepting cookies](images/12-cookie-overlay-stuck.png)
 
 ## Questions raised
 
