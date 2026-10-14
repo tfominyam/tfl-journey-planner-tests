@@ -1,0 +1,9 @@
+# Store text files with LF line endings in the repo; Git converts them on checkout
+# to whatever the local machine expects, so line endings stay consistent for everyone
+# who clones the repo, whatever their own Git settings.
+* text=auto
+
+# Never touch binary files.
+*.png binary
+*.jpg binary
+*.zip binary
