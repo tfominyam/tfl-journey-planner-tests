@@ -17,6 +17,9 @@ public sealed class JourneyPlannerPage
 
     public ILocator Heading => _page.GetByRole(AriaRole.Heading, new() { Name = "Plan a journey", Level = 1 });
 
+    // TfL's bot protection page. Seen when the tests run from GitHub's servers instead of a home connection.
+    private ILocator VerificationHeading => _page.GetByRole(AriaRole.Heading, new() { Name = "Verification required" });
+
     // From and To are autocomplete comboboxes labelled "From location" and "To location".
     public ILocator FromInput => _page.GetByRole(AriaRole.Combobox, new() { Name = "From location", Exact = true });
 
@@ -80,6 +83,17 @@ public sealed class JourneyPlannerPage
     public async Task OpenAsync()
     {
         await _page.GotoAsync("/plan-a-journey");
+
+        // Wait for whichever page TfL serves. If it is the bot check, stop straight away with a clear
+        // reason rather than timing out later on a missing element. The tests never try to get round it.
+        await Heading.Or(VerificationHeading).WaitForAsync();
+        if (await VerificationHeading.IsVisibleAsync())
+        {
+            throw new InvalidOperationException(
+                "TfL showed a 'Verification required' page instead of Plan a journey. Its bot protection is " +
+                "blocking this machine or network (for example a cloud CI runner), so the UI tests can't run here.");
+        }
+
         await _cookieBanner.AcceptEssentialCookiesIfShownAsync();
     }
 

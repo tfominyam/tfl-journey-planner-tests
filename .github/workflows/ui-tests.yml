@@ -1,15 +1,17 @@
 name: UI tests
 
-# Runs the Journey Planner UI tests against the live TfL site.
+# Two jobs:
+# - build:    every push and pull request. Restores, builds and lists the tests, so a change that
+#             breaks the code or the feature files is caught straight away.
+# - ui-tests: on demand only. Runs the suite against the live TfL site. TfL's bot protection shows a
+#             "Verification required" page to GitHub's hosted runners (seen on 14 Oct 2026), so the
+#             UI tests can't run there automatically. The job is kept so it can be run by hand, and
+#             it fails fast with a clear message if the check appears.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-  # Weekday mornings, so a change on the TfL site shows up even when our code hasn't changed.
-  schedule:
-    - cron: "0 6 * * 1-5"
-  # Lets you start a run by hand from the Actions tab.
   workflow_dispatch:
 
 # A newer push to the same branch cancels the run still in progress.
@@ -17,15 +19,39 @@ concurrency:
   group: ui-tests-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  DOTNET_NOLOGO: "true"
+
 jobs:
+  build:
+    # Pinned rather than ubuntu-latest, so a runner image change can't alter results without notice.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore and build
+        run: dotnet build --configuration Release
+
+      # Proves every feature file was turned into tests and compiles. Expect 8 tests.
+      - name: List the tests
+        run: dotnet test --configuration Release --no-build --list-tests
+
   ui-tests:
-    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     env:
-      # Same settings as appsettings.json, overridden for CI.
       TFLTESTS_Headless: "true"
-      DOTNET_NOLOGO: "true"
 
     steps:
       - name: Check out the code
@@ -44,8 +70,8 @@ jobs:
       - name: Check Chrome is available
         run: google-chrome --version
 
-      # The smoke test runs first. If the setup is broken (site down, browser missing),
-      # this step fails and the journey tests are skipped, which saves time and makes the cause obvious.
+      # The smoke test runs first. If the setup is broken or TfL blocks the runner, this step fails
+      # and the journey tests are skipped, which saves time and makes the cause obvious.
       - name: Smoke test
         run: >
           dotnet test --configuration Release --no-build
