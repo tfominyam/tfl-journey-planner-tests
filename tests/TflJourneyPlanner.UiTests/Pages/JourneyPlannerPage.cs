@@ -89,9 +89,7 @@ public sealed class JourneyPlannerPage
     /// </summary>
     public async Task EnterLocationAsync(ILocator field, string location)
     {
-        await field.ClickAsync();
-        await field.FillAsync(string.Empty);
-        await field.PressSequentiallyAsync(location, new() { Delay = 50 });
+        await TypeLikeAUserAsync(field, location);
 
         var match = Suggestion(location).First;
         try
@@ -113,9 +111,7 @@ public sealed class JourneyPlannerPage
     /// </summary>
     public async Task TypeAndChooseAsync(ILocator field, string typed, string suggestion)
     {
-        await field.ClickAsync();
-        await field.FillAsync(string.Empty);
-        await field.PressSequentiallyAsync(typed, new() { Delay = 50 });
+        await TypeLikeAUserAsync(field, typed);
 
         // The list can show the same station more than once (stop and station entries),
         // so take the first match, as a user would.
@@ -126,6 +122,14 @@ public sealed class JourneyPlannerPage
     {
         await EditPreferencesButton.ClickAsync();
         await PreferenceLabel(preference).ClickAsync();
+    }
+
+    // One key at a time, so the autocomplete reacts as it would to a person typing.
+    private static async Task TypeLikeAUserAsync(ILocator field, string text)
+    {
+        await field.ClickAsync();
+        await field.FillAsync(string.Empty);
+        await field.PressSequentiallyAsync(text, new() { Delay = 50 });
     }
 
     public async Task PlanJourneyAsync()

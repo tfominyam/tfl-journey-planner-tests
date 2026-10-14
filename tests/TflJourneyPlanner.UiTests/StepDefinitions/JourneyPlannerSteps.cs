@@ -15,6 +15,13 @@ public sealed class JourneyPlannerSteps
     // A number followed by "min", "mins", "minute" or "minutes", with or without a space.
     private static readonly Regex MinutesPattern = new(@"\d+\s*min(ute)?s?\b", RegexOptions.IgnoreCase);
 
+    // Accessibility details lines. Each needs a number in front, so the icon names
+    // ("Up stairs", "Level walkway") can't satisfy them on their own.
+    private static readonly Regex WalkingTimePattern = new(@"\d+\s*minutes?\b", RegexOptions.IgnoreCase);
+    private static readonly Regex StairsPattern = new(@"\d+\s+sets? of stairs", RegexOptions.IgnoreCase);
+    private static readonly Regex EscalatorPattern = new(@"\d+\s+escalators?", RegexOptions.IgnoreCase);
+    private static readonly Regex WalkwayPattern = new(@"\d+\s+level walkways?", RegexOptions.IgnoreCase);
+
     private readonly IPage _page;
     private readonly JourneyPlannerPage _journeyPlanner;
 
@@ -24,23 +31,31 @@ public sealed class JourneyPlannerSteps
         _journeyPlanner = journeyPlanner;
     }
 
-    [When("I plan the journey without entering a From or To location")]
-    public async Task WhenIPlanTheJourneyWithoutLocations()
-    {
-        // Prove the precondition rather than assume it: both fields start empty.
-        await Expect(_journeyPlanner.FromInput).ToBeEmptyAsync();
-        await Expect(_journeyPlanner.ToInput).ToBeEmptyAsync();
+    // ---- Given: starting points ----
 
-        await _journeyPlanner.PlanJourneyAsync();
+    [Given("I have planned a journey from {string} to {string}")]
+    public async Task GivenIHavePlannedAJourneyFromTo(string from, string to)
+    {
+        await WhenIPlanAJourneyFromTo(from, to);
+
+        // A Given sets up state, so prove the state is there before the scenario carries on.
+        // With the default "fastest routes" this short trip only offers walking and cycling,
+        // so walking is the sign the results have loaded. Public transport options only
+        // appear once "Routes with least walking" is chosen.
+        await Expect(_journeyPlanner.WalkingOption).ToBeVisibleAsync();
     }
 
-    [When("I plan a journey from {string} to {string}")]
-    public async Task WhenIPlanAJourneyFromTo(string from, string to)
+    [Given("I have planned a journey from {string} to {string} with routes with least walking")]
+    public async Task GivenIHavePlannedAJourneyWithLeastWalking(string from, string to)
     {
-        await _journeyPlanner.EnterLocationAsync(_journeyPlanner.FromInput, from);
-        await _journeyPlanner.EnterLocationAsync(_journeyPlanner.ToInput, to);
-        await PlanAndWaitForResultsAsync();
+        await GivenIHavePlannedAJourneyFromTo(from, to);
+        await WhenIChangeMyPreferencesTo("Routes with least walking");
+        await WhenIUpdateTheJourney();
+        await ThenTheResultsAreShownForRoutesWithLeastWalking();
+        await Expect(_journeyPlanner.JourneyOptions.First).ToBeVisibleAsync();
     }
+
+    // ---- When: actions ----
 
     [When("I type {string} in the {word} field and choose {string}")]
     public async Task WhenITypeInTheFieldAndChoose(string typed, string field, string suggestion)
@@ -58,16 +73,10 @@ public sealed class JourneyPlannerSteps
         await Expect(input).ToHaveValueAsync(new Regex(Regex.Escape(suggestion)));
     }
 
-    [Given("I have planned a journey from {string} to {string}")]
-    public async Task GivenIHavePlannedAJourneyFromTo(string from, string to)
+    [When("I plan the journey")]
+    public async Task WhenIPlanTheJourney()
     {
-        await WhenIPlanAJourneyFromTo(from, to);
-
-        // A Given sets up state, so prove the state is there before the scenario carries on.
-        // With the default "fastest routes" this short trip only offers walking and cycling,
-        // so walking is the sign the results have loaded. Public transport options only
-        // appear once "Routes with least walking" is chosen.
-        await Expect(_journeyPlanner.WalkingOption).ToBeVisibleAsync();
+        await PlanAndWaitForResultsAsync();
     }
 
     [When("I change my preferences to {string}")]
@@ -77,14 +86,10 @@ public sealed class JourneyPlannerSteps
         await Expect(_journeyPlanner.Preference(preference)).ToBeCheckedAsync();
     }
 
-    [Given("I have planned a journey from {string} to {string} with routes with least walking")]
-    public async Task GivenIHavePlannedAJourneyWithLeastWalking(string from, string to)
+    [When("I update the journey")]
+    public async Task WhenIUpdateTheJourney()
     {
-        await GivenIHavePlannedAJourneyFromTo(from, to);
-        await WhenIChangeMyPreferencesTo("Routes with least walking");
-        await WhenIUpdateTheJourney();
-        await ThenTheResultsAreShownForRoutesWithLeastWalking();
-        await Expect(_journeyPlanner.JourneyOptions.First).ToBeVisibleAsync();
+        await _journeyPlanner.UpdateJourneyButton.ClickAsync();
     }
 
     [When("I view the details of the first journey")]
@@ -93,64 +98,25 @@ public sealed class JourneyPlannerSteps
         await _journeyPlanner.ViewDetails.ClickAsync();
     }
 
-    [Then("the access information at {string} includes:")]
-    public async Task ThenTheAccessInformationAtIncludes(string station, DataTable table)
+    [When("I plan a journey from {string} to {string}")]
+    public async Task WhenIPlanAJourneyFromTo(string from, string to)
     {
-        // The station must be part of this journey, and every listed access icon must be shown.
-        await Expect(_journeyPlanner.FirstJourney).ToContainTextAsync(station);
-
-        foreach (var row in table.Rows)
-        {
-            await Expect(_journeyPlanner.AccessIcon(row["Access"])).ToBeVisibleAsync();
-        }
-    }
-
-    [Then("the accessibility details show the total walking time and the stairs, escalators and walkways on the route")]
-    public async Task ThenTheAccessibilityDetailsShowWalkingTimeStairsEscalatorsAndWalkways()
-    {
-        await _journeyPlanner.AccessibilityDetailsToggle.ClickAsync();
-
-        // Counts come from live data, so check the kind of item, each with a number in front.
-        // .First because one journey can list several of a kind ("2 sets of stairs down", "1 set of stairs up").
-        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s*minutes?\b", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
-        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s+sets? of stairs", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
-        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s+escalators?", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
-        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s+level walkways?", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
-    }
-
-    [When("I update the journey")]
-    public async Task WhenIUpdateTheJourney()
-    {
-        await _journeyPlanner.UpdateJourneyButton.ClickAsync();
-    }
-
-    [Then("the results are shown for routes with least walking")]
-    public async Task ThenTheResultsAreShownForRoutesWithLeastWalking()
-    {
-        // Only appears once the updated results have loaded, so this also waits for the update.
-        await Expect(_journeyPlanner.PreferenceSummary("Showing routes with least walking")).ToBeVisibleAsync();
-    }
-
-    [Then("each journey shows a journey time in minutes")]
-    public async Task ThenEachJourneyShowsAJourneyTimeInMinutes()
-    {
-        var journeys = _journeyPlanner.JourneyOptions;
-        await Expect(journeys.First).ToBeVisibleAsync();
-
-        var count = await journeys.CountAsync();
-        count.ShouldBeGreaterThan(0, "the results should list at least one journey");
-
-        for (var i = 0; i < count; i++)
-        {
-            await Expect(journeys.Nth(i)).ToContainTextAsync(MinutesPattern);
-        }
-    }
-
-    [When("I plan the journey")]
-    public async Task WhenIPlanTheJourney()
-    {
+        await _journeyPlanner.EnterLocationAsync(_journeyPlanner.FromInput, from);
+        await _journeyPlanner.EnterLocationAsync(_journeyPlanner.ToInput, to);
         await PlanAndWaitForResultsAsync();
     }
+
+    [When("I plan the journey without entering a From or To location")]
+    public async Task WhenIPlanTheJourneyWithoutLocations()
+    {
+        // Prove the precondition rather than assume it: both fields start empty.
+        await Expect(_journeyPlanner.FromInput).ToBeEmptyAsync();
+        await Expect(_journeyPlanner.ToInput).ToBeEmptyAsync();
+
+        await _journeyPlanner.PlanJourneyAsync();
+    }
+
+    // ---- Then: outcomes ----
 
     [Then("journey results are shown from {string} to {string}")]
     public async Task ThenJourneyResultsAreShownFromTo(string from, string to)
@@ -175,16 +141,63 @@ public sealed class JourneyPlannerSteps
         await Expect(_journeyPlanner.CyclingOption).ToContainTextAsync(MinutesPattern);
     }
 
-    [Then("I see the message {string}")]
-    public async Task ThenISeeTheMessage(string message)
+    [Then("the results are shown for routes with least walking")]
+    public async Task ThenTheResultsAreShownForRoutesWithLeastWalking()
     {
-        await Expect(_journeyPlanner.Message(message)).ToBeVisibleAsync();
+        // Only appears once the updated results have loaded, so this also waits for the update.
+        await Expect(_journeyPlanner.PreferenceSummary("Showing routes with least walking")).ToBeVisibleAsync();
+    }
+
+    [Then("each journey shows a journey time in minutes")]
+    public async Task ThenEachJourneyShowsAJourneyTimeInMinutes()
+    {
+        var journeys = _journeyPlanner.JourneyOptions;
+        await Expect(journeys.First).ToBeVisibleAsync();
+
+        var count = await journeys.CountAsync();
+        count.ShouldBeGreaterThan(0, "the results should list at least one journey");
+
+        for (var i = 0; i < count; i++)
+        {
+            await Expect(journeys.Nth(i)).ToContainTextAsync(MinutesPattern);
+        }
+    }
+
+    [Then("the access information at {string} includes:")]
+    public async Task ThenTheAccessInformationAtIncludes(string station, DataTable table)
+    {
+        // The station must be part of this journey, and every listed access icon must be shown.
+        await Expect(_journeyPlanner.FirstJourney).ToContainTextAsync(station);
+
+        foreach (var row in table.Rows)
+        {
+            await Expect(_journeyPlanner.AccessIcon(row["Access"])).ToBeVisibleAsync();
+        }
+    }
+
+    [Then("the accessibility details show the total walking time and the stairs, escalators and walkways on the route")]
+    public async Task ThenTheAccessibilityDetailsShowWalkingTimeStairsEscalatorsAndWalkways()
+    {
+        await _journeyPlanner.AccessibilityDetailsToggle.ClickAsync();
+
+        // Counts come from live data, so check the kind of item, each with a number in front.
+        // .First because one journey can list several of a kind ("2 sets of stairs down", "1 set of stairs up").
+        await Expect(_journeyPlanner.FirstJourneyText(WalkingTimePattern).First).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.FirstJourneyText(StairsPattern).First).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.FirstJourneyText(EscalatorPattern).First).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.FirstJourneyText(WalkwayPattern).First).ToBeVisibleAsync();
     }
 
     [Then("I am asked which location I meant by {string}")]
     public async Task ThenIAmAskedWhichLocationIMeantBy(string location)
     {
         await Expect(_journeyPlanner.DisambiguationMessage(location)).ToBeVisibleAsync();
+    }
+
+    [Then("I see the message {string}")]
+    public async Task ThenISeeTheMessage(string message)
+    {
+        await Expect(_journeyPlanner.Message(message)).ToBeVisibleAsync();
     }
 
     [Then("no journey results are shown")]
@@ -195,6 +208,8 @@ public sealed class JourneyPlannerSteps
         await Expect(_journeyPlanner.WalkingOption).ToHaveCountAsync(0);
         await Expect(_journeyPlanner.CyclingOption).ToHaveCountAsync(0);
     }
+
+    // ---- Helpers ----
 
     private async Task PlanAndWaitForResultsAsync()
     {

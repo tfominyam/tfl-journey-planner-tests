@@ -37,17 +37,27 @@ public sealed class CookieBanner
 
         await AcceptEssentialButton.ClickAsync();
         await AcceptEssentialButton.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
+        await ClearStuckOverlayAsync();
 
-        // Sometimes the overlay stays on screen after the banner has gone and blocks every
-        // click (Issue 5 in EXPLORATORY-NOTES.md). A user would reload the page, so the test
-        // does the same, and says so in the output rather than hiding it.
+        // The overlay can also come back and stick on a later page, such as the results page
+        // (Issue 5). A locator handler runs automatically whenever the overlay shows up before
+        // Playwright clicks or types, so every step is covered without adding checks to each one.
+        // It is only registered now, after cookies are accepted, because before that the overlay
+        // is meant to be there.
+        await _page.AddLocatorHandlerAsync(Overlay, async _ => await ClearStuckOverlayAsync());
+    }
+
+    // Sometimes the overlay stays on screen and blocks every click (Issue 5 in EXPLORATORY-NOTES.md).
+    // A user would reload the page, so the test does the same, and says so in the output.
+    private async Task ClearStuckOverlayAsync()
+    {
         try
         {
             await Overlay.WaitForAsync(new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
         }
         catch (TimeoutException)
         {
-            _output.WriteLine("Cookie overlay still covering the page 10s after accepting cookies. Reloading the page (Issue 5).");
+            _output.WriteLine($"Cookie overlay still covering {_page.Url} after 10s. Reloading the page (Issue 5).");
             await _page.ReloadAsync();
             await Overlay.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
         }
