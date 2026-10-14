@@ -4,8 +4,8 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------ |
 | **Project**    | TfL Journey Planner UI test automation (STA Coding Challenge)                                                |
 | **Author**     | Tangi Fominyam                                                                                               |
-| **Version**    | 0.4 (draft)                                                                                                  |
-| **Date**       | 12 October 2026                                                                                              |
+| **Version**    | 0.5                                                                                                          |
+| **Date**       | 14 October 2026                                                                                              |
 | **Test basis** | *STA Coding Challenge - Web* brief (9 Oct 2026); the live Journey Planner; exploratory session (12 Oct 2026) |
 
 ## 1. Purpose
@@ -39,7 +39,7 @@ an edge case with a clear workaround.
 | REQ-14 | Invalid locations give no journey results                              | Medium   | A journey with an invalid location is not planned (3 examples)     |
 | REQ-15 | No journey can be planned with both locations empty                    | Low      | A journey cannot be planned without locations                      |
 
-**Expected behaviour, confirmed by exploratory testing.** This is what the tests will check.
+**Expected behaviour, confirmed by exploratory testing.** This is what the site does. Section 2.5 lists exactly what each test asserts.
 
 - **REQ-08:** suggestions appear after 2 or 3 characters. The results URL carries the stop IDs `FromId=1000135` and `ToId=1000056`.
 - **REQ-09:** the "Walking and cycling" section shows both times as a number followed by "mins", for example "6 mins" and "1 mins".
@@ -51,12 +51,12 @@ an edge case with a clear workaround.
 
 ### 2.2 Technical constraints
 
-| ID     | Constraint                                   | How it is met                                          |
-| ------ | -------------------------------------------- | ------------------------------------------------------ |
-| REQ-01 | Tests written in C#                          | .NET 10 test project with NUnit                        |
-| REQ-02 | Tests written in Gherkin                     | Reqnroll feature files                                 |
-| REQ-03 | Playwright and "Chromedriver" .NET libraries | Microsoft.Playwright against Google Chrome (see A1)    |
-| REQ-07 | At least 5 tests                             | 7 tests: 4 scenarios plus a 3-example Scenario Outline |
+| ID     | Constraint                                   | How it is met                                              |
+| ------ | -------------------------------------------- | ---------------------------------------------------------- |
+| REQ-01 | Tests written in C#                          | .NET 10 test project with NUnit                            |
+| REQ-02 | Tests written in Gherkin                     | Reqnroll feature files                                     |
+| REQ-03 | Playwright and "Chromedriver" .NET libraries | Microsoft.Playwright against Google Chrome (see A1)        |
+| REQ-07 | At least 5 tests                             | 7 tests (4 scenarios, 3-example outline) plus a smoke test |
 
 ### 2.3 Deliverables
 
@@ -104,6 +104,21 @@ check for a "no results" message (there isn't one), or for the suggestions thems
 
 **No locations (REQ-15):** both fields left empty, with nothing typed.
 
+### 2.5 What each test asserts
+
+Times and counts come from live data, so the tests check format and a sensible range (1 to 60 minutes), never exact values.
+
+| ID     | Asserted                                                                                                                                                |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| REQ-08 | Each field holds the chosen station; results page shows both station names                                                                              |
+| REQ-09 | Walking and cycling options visible, each with 1 to 60 minutes                                                                                          |
+| REQ-10 | "Routes with least walking" ticked; results say "Showing routes with least walking"                                                                     |
+| REQ-11 | At least one journey listed; every journey shows 1 to 60 minutes                                                                                        |
+| REQ-12 | View details opens on the first journey                                                                                                                 |
+| REQ-13 | Covent Garden in the journey; Up stairs, Up lift, Level walkway icons shown; accessibility details list a walking time, stairs, escalators and walkways |
+| REQ-14 | "More than one location matching '...'" for the invalid value; no walking or cycling options                                                            |
+| REQ-15 | Both "field is required" messages; no walking or cycling options                                                                                        |
+
 ## 3. Ambiguities and my interpretation
 
 | ID  | Question                                       | Status                                    |
@@ -122,15 +137,15 @@ check for a "no results" message (there isn't one), or for the suggestions thems
 
 ## 4. Risks to the tests
 
-| Risk                                           | Mitigation                                               |
-| ---------------------------------------------- | -------------------------------------------------------- |
-| Live data (times, delays) changes between runs | Assert format and range, not exact values                |
-| Cookie banner covers the page                  | Dismiss it in a hook before every scenario               |
-| TfL changes the page markup                    | User-facing locators; all selectors kept in page objects |
-| Slow journey planner responses                 | Playwright's built-in waiting; no fixed sleeps           |
-| State leaks between scenarios                  | Fresh browser context per scenario; no shared state      |
-| Bot detection in headless runs or CI           | Use branded Chrome; document any limits found            |
-| Suggestions for invalid input change over time | Assert the message and no results, not the suggestions   |
+| Risk                                           | Mitigation                                                                               |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Live data (times, delays) changes between runs | Assert format and range, not exact values                                                |
+| Cookie banner covers the page                  | Accept essential cookies; a locator handler clears a stuck overlay on any page (Issue 5) |
+| TfL changes the page markup                    | User-facing locators; all selectors kept in page objects                                 |
+| Slow journey planner responses                 | Playwright's built-in waiting; no fixed sleeps                                           |
+| State leaks between scenarios                  | Fresh browser context per scenario; no shared state                                      |
+| Bot detection in headless runs or CI           | Detected and reported clearly; CI builds on every PR, UI run is manual (see README)      |
+| Suggestions for invalid input change over time | Assert the message and no results, not the suggestions                                   |
 
 ## 5. Out of scope
 
@@ -143,6 +158,7 @@ check for a "no results" message (there isn't one), or for the suggestions thems
 
 | Version | Date        | Change                                                                                                                         |
 | ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 0.5     | 14 Oct 2026 | Added section 2.5 (what each test asserts); test count includes the smoke test; risks updated after automation and CI          |
 | 0.4     | 12 Oct 2026 | Scenario names now match the feature file exactly                                                                              |
 | 0.3     | 12 Oct 2026 | Updated after exploratory testing: ambiguities resolved, expected behaviour added, test data reasoning corrected, one new risk |
 | 0.2     | 12 Oct 2026 | Added test data (section 2.4)                                                                                                  |

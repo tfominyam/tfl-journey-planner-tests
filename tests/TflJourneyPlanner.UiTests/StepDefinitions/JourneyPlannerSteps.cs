@@ -13,7 +13,13 @@ public sealed class JourneyPlannerSteps
     private static readonly Regex ResultsUrl = new("/plan-a-journey/results");
 
     // A number followed by "min", "mins", "minute" or "minutes", with or without a space.
-    private static readonly Regex MinutesPattern = new(@"\d+\s*min(ute)?s?\b", RegexOptions.IgnoreCase);
+    // The number is captured so it can be range-checked.
+    private static readonly Regex MinutesPattern = new(@"(\d+)\s*min(ute)?s?\b", RegexOptions.IgnoreCase);
+
+    // Leicester Square to Covent Garden is a short trip. Times are live data, so no exact value is
+    // expected, but anything outside this range means the page is showing the wrong thing.
+    private const int MinSensibleMinutes = 1;
+    private const int MaxSensibleMinutes = 60;
 
     // Accessibility details lines. Each needs a number in front, so the icon names
     // ("Up stairs", "Level walkway") can't satisfy them on their own.
@@ -131,14 +137,14 @@ public sealed class JourneyPlannerSteps
     {
         // Live data, so check the format ("6 mins", "1 mins"), not the value.
         await Expect(_journeyPlanner.WalkingOption).ToBeVisibleAsync();
-        await Expect(_journeyPlanner.WalkingOption).ToContainTextAsync(MinutesPattern);
+        await ShouldShowSensibleMinutesAsync(_journeyPlanner.WalkingOption, "walking time");
     }
 
     [Then("a cycling time is shown in minutes")]
     public async Task ThenACyclingTimeIsShownInMinutes()
     {
         await Expect(_journeyPlanner.CyclingOption).ToBeVisibleAsync();
-        await Expect(_journeyPlanner.CyclingOption).ToContainTextAsync(MinutesPattern);
+        await ShouldShowSensibleMinutesAsync(_journeyPlanner.CyclingOption, "cycling time");
     }
 
     [Then("the results are shown for routes with least walking")]
@@ -159,7 +165,7 @@ public sealed class JourneyPlannerSteps
 
         for (var i = 0; i < count; i++)
         {
-            await Expect(journeys.Nth(i)).ToContainTextAsync(MinutesPattern);
+            await ShouldShowSensibleMinutesAsync(journeys.Nth(i), $"journey {i + 1} time");
         }
     }
 
@@ -210,6 +216,16 @@ public sealed class JourneyPlannerSteps
     }
 
     // ---- Helpers ----
+
+    // Waits for a time in minutes to appear (Playwright retries), then checks the number is sensible (Shouldly).
+    private static async Task ShouldShowSensibleMinutesAsync(ILocator element, string what)
+    {
+        await Expect(element).ToContainTextAsync(MinutesPattern);
+
+        var text = await element.InnerTextAsync();
+        var minutes = int.Parse(MinutesPattern.Match(text).Groups[1].Value);
+        minutes.ShouldBeInRange(MinSensibleMinutes, MaxSensibleMinutes, $"{what} was \"{text.Trim()}\"");
+    }
 
     private async Task PlanAndWaitForResultsAsync()
     {
