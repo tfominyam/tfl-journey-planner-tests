@@ -1,0 +1,76 @@
+name: UI tests
+
+# Runs the Journey Planner UI tests against the live TfL site.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Weekday mornings, so a change on the TfL site shows up even when our code hasn't changed.
+  schedule:
+    - cron: "0 6 * * 1-5"
+  # Lets you start a run by hand from the Actions tab.
+  workflow_dispatch:
+
+# A newer push to the same branch cancels the run still in progress.
+concurrency:
+  group: ui-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      # Same settings as appsettings.json, overridden for CI.
+      TFLTESTS_Headless: "true"
+      DOTNET_NOLOGO: "true"
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore and build
+        run: dotnet build --configuration Release
+
+      # Google Chrome is already installed on GitHub's Ubuntu runners, and the tests use the
+      # "chrome" channel, so there is no browser download step.
+      - name: Check Chrome is available
+        run: google-chrome --version
+
+      # The smoke test runs first. If the setup is broken (site down, browser missing),
+      # this step fails and the journey tests are skipped, which saves time and makes the cause obvious.
+      - name: Smoke test
+        run: >
+          dotnet test --configuration Release --no-build
+          --filter "Category=smoke"
+          --logger "console;verbosity=detailed"
+          --logger "trx;LogFileName=smoke.trx"
+          --results-directory TestResults
+
+      - name: Journey planner tests
+        run: >
+          dotnet test --configuration Release --no-build
+          --filter "Category!=smoke"
+          --logger "console;verbosity=detailed"
+          --logger "trx;LogFileName=journey-planner.trx"
+          --results-directory TestResults
+
+      # Always keep the results. On a failure this includes the screenshot and the Playwright
+      # trace for each failed scenario, which can be opened at trace.playwright.dev.
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            TestResults/
+            tests/TflJourneyPlanner.UiTests/bin/Release/net10.0/TestResults/failures/
+          if-no-files-found: ignore
+          retention-days: 14
