@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 
 namespace TflJourneyPlanner.UiTests.Pages;
@@ -42,6 +43,23 @@ public sealed class JourneyPlannerPage
         _page.GetByText($"We found more than one location matching '{location}'", new() { Exact = true });
 
     public ILocator Message(string text) => _page.GetByText(text, new() { Exact = true });
+
+    // Results page: travel preferences.
+    public ILocator EditPreferencesButton => _page.GetByRole(AriaRole.Button, new() { Name = "Edit preferences" });
+
+    public ILocator UpdateJourneyButton => _page.GetByRole(AriaRole.Button, new() { Name = "Update journey" });
+
+    public ILocator Preference(string name) => _page.GetByRole(AriaRole.Radio, new() { Name = name, Exact = true });
+
+    // TfL draws its own radio buttons: the real <input> sits under a styled label box that
+    // takes the click. A user clicks the label, so the test does too.
+    private ILocator PreferenceLabel(string name) => _page.GetByText(name, new() { Exact = true });
+
+    // The summary line under "Travel preferences & accessibility", e.g. "Showing routes with least walking".
+    public ILocator PreferenceSummary(string text) => _page.GetByText(text);
+
+    // Each public transport journey has a header button named "Option 1: walking, Piccadilly line ...".
+    public ILocator JourneyOptions => _page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex(@"^Option \d+:") });
 
     private ILocator Suggestion(string name) => _page.GetByRole(AriaRole.Option, new() { Name = name });
 
@@ -88,6 +106,12 @@ public sealed class JourneyPlannerPage
         // The list can show the same station more than once (stop and station entries),
         // so take the first match, as a user would.
         await Suggestion(suggestion).First.ClickAsync();
+    }
+
+    public async Task ChoosePreferenceAsync(string preference)
+    {
+        await EditPreferencesButton.ClickAsync();
+        await PreferenceLabel(preference).ClickAsync();
     }
 
     public async Task PlanJourneyAsync()

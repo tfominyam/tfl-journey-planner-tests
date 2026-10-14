@@ -161,7 +161,7 @@ Anything that looked wrong, slow, confusing or inaccessible, even if it's outsid
 - **Steps:** open Plan a journey in a fresh browser and click "Accept only essential cookies".
 - **Expected:** the banner and the dark layer behind it both disappear.
 - **Actual:** the banner went (the page shows "My Journeys is disabled due to your cookie preferences"), but the dark layer stayed for more than 15 seconds and blocked every click on the page.
-- **How often:** once in the runs so far. It looks like timing, so it may be hard to reproduce by hand.
+- **How often:** more often than it first looked. 1 of 5 scenarios in the regression run on 13 Oct, then 3 of 6 on 14 Oct. It looks like timing, so it may be hard to reproduce by hand.
 - **Why it matters:** a user would see a dimmed page that ignores clicks until they reload.
 - **How the tests handle it:** if the layer is still there 10 seconds after accepting, the test reloads the page and writes a line to the test output, so it is visible rather than hidden.
 - **Evidence:** 12-cookie-overlay-stuck.png
