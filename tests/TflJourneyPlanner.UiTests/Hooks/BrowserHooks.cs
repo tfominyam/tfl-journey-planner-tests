@@ -30,6 +30,11 @@ public sealed class BrowserHooks
     public static async Task StartBrowserAsync()
     {
         _settings = TestSettings.Load();
+
+        // Playwright has two separate timeouts. Actions (click, fill) use the context timeout set
+        // per scenario below. Expect(...) assertions have their own default of 5 seconds, which is
+        // too short for TfL's results page on a slow day. Keep both on the same configured value.
+        Assertions.SetDefaultExpectTimeout(_settings.DefaultTimeoutMs);
         _playwright = await Playwright.CreateAsync();
         _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
         {
