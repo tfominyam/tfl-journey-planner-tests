@@ -77,6 +77,47 @@ public sealed class JourneyPlannerSteps
         await Expect(_journeyPlanner.Preference(preference)).ToBeCheckedAsync();
     }
 
+    [Given("I have planned a journey from {string} to {string} with routes with least walking")]
+    public async Task GivenIHavePlannedAJourneyWithLeastWalking(string from, string to)
+    {
+        await GivenIHavePlannedAJourneyFromTo(from, to);
+        await WhenIChangeMyPreferencesTo("Routes with least walking");
+        await WhenIUpdateTheJourney();
+        await ThenTheResultsAreShownForRoutesWithLeastWalking();
+        await Expect(_journeyPlanner.JourneyOptions.First).ToBeVisibleAsync();
+    }
+
+    [When("I view the details of the first journey")]
+    public async Task WhenIViewTheDetailsOfTheFirstJourney()
+    {
+        await _journeyPlanner.ViewDetails.ClickAsync();
+    }
+
+    [Then("the access information at {string} includes:")]
+    public async Task ThenTheAccessInformationAtIncludes(string station, DataTable table)
+    {
+        // The station must be part of this journey, and every listed access icon must be shown.
+        await Expect(_journeyPlanner.FirstJourney).ToContainTextAsync(station);
+
+        foreach (var row in table.Rows)
+        {
+            await Expect(_journeyPlanner.AccessIcon(row["Access"])).ToBeVisibleAsync();
+        }
+    }
+
+    [Then("the accessibility details show the total walking time and the stairs, escalators and walkways on the route")]
+    public async Task ThenTheAccessibilityDetailsShowWalkingTimeStairsEscalatorsAndWalkways()
+    {
+        await _journeyPlanner.AccessibilityDetailsToggle.ClickAsync();
+
+        // Counts come from live data, so check the kind of item, each with a number in front.
+        // .First because one journey can list several of a kind ("2 sets of stairs down", "1 set of stairs up").
+        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s*minutes?\b", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s+sets? of stairs", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s+escalators?", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
+        await Expect(_journeyPlanner.FirstJourneyText(new Regex(@"\d+\s+level walkways?", RegexOptions.IgnoreCase)).First).ToBeVisibleAsync();
+    }
+
     [When("I update the journey")]
     public async Task WhenIUpdateTheJourney()
     {

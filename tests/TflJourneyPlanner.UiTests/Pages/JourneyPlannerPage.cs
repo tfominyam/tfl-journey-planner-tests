@@ -61,6 +61,20 @@ public sealed class JourneyPlannerPage
     // Each public transport journey has a header button named "Option 1: walking, Piccadilly line ...".
     public ILocator JourneyOptions => _page.GetByRole(AriaRole.Button, new() { NameRegex = new Regex(@"^Option \d+:") });
 
+    // The content of the first journey is a region labelled by its "Option 1: ..." button.
+    // Scoping to it means later checks can't pick up text from another journey.
+    public ILocator FirstJourney => _page.GetByRole(AriaRole.Region, new() { NameRegex = new Regex(@"^Option 1:") });
+
+    public ILocator ViewDetails => FirstJourney.GetByText("View details", new() { Exact = true });
+
+    public ILocator AccessibilityDetailsToggle => FirstJourney.GetByText("Accessibility details", new() { Exact = true });
+
+    // Step-by-step access icons, e.g. "Up stairs", "Up lift", "Level walkway". They are links.
+    public ILocator AccessIcon(string name) => FirstJourney.GetByRole(AriaRole.Link, new() { Name = name, Exact = true });
+
+    // Text inside the expanded accessibility details, e.g. "2 sets of stairs down".
+    public ILocator FirstJourneyText(Regex pattern) => FirstJourney.GetByText(pattern);
+
     private ILocator Suggestion(string name) => _page.GetByRole(AriaRole.Option, new() { Name = name });
 
     public async Task OpenAsync()
