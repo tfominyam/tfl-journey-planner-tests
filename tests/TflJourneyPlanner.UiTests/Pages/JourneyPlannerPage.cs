@@ -82,7 +82,9 @@ public sealed class JourneyPlannerPage
 
     public async Task OpenAsync()
     {
-        await _page.GotoAsync("/plan-a-journey");
+        // TfL's CDN has been seen serving an empty cached page for the address without the
+        // trailing slash (24 Nov 2026). Open the address the site itself redirects to.
+        await _page.GotoAsync("/plan-a-journey/");
 
         // Wait for whichever page TfL serves. If it is the bot check, stop straight away with a clear
         // reason rather than timing out later on a missing element. The tests never try to get round it.
